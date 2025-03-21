@@ -81,9 +81,7 @@ class SetupCluster extends Component
         }
     }
     
-    /**
-     * Mengambil data untuk clustering dari model
-     */
+ 
     private function getClusteringData()
     {
         $students = Student::all();

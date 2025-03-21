@@ -39,12 +39,10 @@ class ClusteringResult extends Component
             $this->converged = $result['converged'];
         }
         
-        // Ambil hasil elbow method dari session jika tersedia
         if (Session::has('optimalK')) {
             $this->optimalK = Session::get('optimalK');
         }
         
-        // Ambil data hasil elbow jika tersedia
         if (Session::has('elbow_results')) {
             $elbowData = Session::get('elbow_results');
             if (isset($elbowData['results'])) {
@@ -53,17 +51,13 @@ class ClusteringResult extends Component
         }
     }
     
-    /**
-     * Fungsi untuk memformat nilai numerik menjadi string dengan presisi tertentu
-     */
+    
     public function formatNumber($number, $precision = 2)
     {
         return number_format($number, $precision, '.', ',');
     }
     
-    /**
-     * Fungsi untuk mendapatkan warna cluster berdasarkan indeks
-     */
+  
     public function getClusterColor($index)
     {
         $colors = [
@@ -82,12 +76,9 @@ class ClusteringResult extends Component
         return $colors[$index % count($colors)];
     }
     
-    /**
-     * Mengkonversi nilai numerik sikap kembali ke huruf
-     */
+   
     public function getNilaiSikapHuruf($nilai)
     {
-        // Konversi nilai numerik menjadi huruf berdasarkan ketentuan baru
         if ($nilai >= 85) {
             return 'SB';
         } else if ($nilai >= 75) {
@@ -99,9 +90,7 @@ class ClusteringResult extends Component
         }
     }
     
-    /**
-     * Mendapatkan informasi statistik tentang cluster
-     */
+   
     public function getClusterStats($clusterIndex)
     {
         $cluster = $this->clusters[$clusterIndex];
@@ -156,16 +145,13 @@ class ClusteringResult extends Component
         ];
     }
     
-    /**
-     * Reset hasil clustering
-     */
+    
     public function resetClustering()
     {
         Session::forget('kmeans_result');
         return redirect()->route('clustering.setup');
     }
     
-    // Metode untuk mendapatkan jumlah siswa di setiap cluster
     public function getClusterCounts()
     {
         if (!$this->isDataAvailable) {
@@ -180,7 +166,6 @@ class ClusteringResult extends Component
         return $counts;
     }
     
-    // Metode untuk mendapatkan total siswa
     public function getTotalStudents()
     {
         if (!$this->isDataAvailable) {
@@ -195,7 +180,6 @@ class ClusteringResult extends Component
         return $total;
     }
     
-    // Metode untuk mendapatkan warna untuk pie chart
     public function getClusterPieColors()
     {
         return [
@@ -204,7 +188,6 @@ class ClusteringResult extends Component
         ];
     }
     
-    // Metode untuk mendapatkan warna untuk Highcharts
     public function getClusterHighchartsColors()
     {
         return [
@@ -213,7 +196,6 @@ class ClusteringResult extends Component
         ];
     }
     
-    // Metode untuk mendapatkan label nilai berdasarkan threshold
     public function getValueLabel($value, $threshold)
     {
         if ($value >= $threshold) {
@@ -225,7 +207,6 @@ class ClusteringResult extends Component
         }
     }
     
-    // Metode untuk mendapatkan warna nilai berdasarkan threshold
     public function getValueColor($value, $threshold)
     {
         if ($value >= $threshold) {
@@ -237,7 +218,6 @@ class ClusteringResult extends Component
         }
     }
     
-    // Metode untuk mendapatkan warna sikap
     public function getSikapColor($grade)
     {
         switch ($grade) {
@@ -258,7 +238,6 @@ class ClusteringResult extends Component
         }
     }
     
-    // Metode untuk mendapatkan data cluster untuk radar chart
     public function getClusterDataForRadarChart()
     {
         if (!$this->isDataAvailable) {
@@ -270,7 +249,6 @@ class ClusteringResult extends Component
         foreach ($this->clusters as $index => $cluster) {
             $stats = $this->getClusterStats($index);
             
-            // Normalisasi nilai sikap dari skala 1-4 ke skala 0-100
             $sikapNormalized = ($stats['avg_sikap'] / 4) * 100;
             
             $result[] = [
@@ -286,7 +264,6 @@ class ClusteringResult extends Component
         return $result;
     }
     
-    // Metode untuk mendapatkan karakteristik cluster
     public function getClusterCharacteristics($clusterIndex)
     {
         if (!$this->isDataAvailable) {
@@ -295,10 +272,8 @@ class ClusteringResult extends Component
         
         $stats = $this->getClusterStats($clusterIndex);
         
-        // Tentukan karakteristik berdasarkan nilai rata-rata
         $characteristics = [];
         
-        // Akademik (UTS dan UAS)
         $akademikRata = ($stats['avg_uts'] + $stats['avg_uas']) / 2;
         if ($akademikRata >= 80) {
             $characteristics[] = __('Akademik Tinggi');
@@ -308,7 +283,6 @@ class ClusteringResult extends Component
             $characteristics[] = __('Akademik Rendah');
         }
         
-        // Sikap
         if ($stats['avg_sikap'] >= 3.1) {
             $characteristics[] = __('Sikap Sangat Baik');
         } else if ($stats['avg_sikap'] >= 2.1) {
@@ -317,7 +291,6 @@ class ClusteringResult extends Component
             $characteristics[] = __('Sikap Perlu Perhatian');
         }
         
-        // Ekstrakurikuler (Pramuka dan PMR)
         $ekstraRata = ($stats['avg_pramuka'] + $stats['avg_pmr']) / 2;
         if ($ekstraRata >= 80) {
             $characteristics[] = __('Ekstrakurikuler Aktif');
@@ -327,7 +300,6 @@ class ClusteringResult extends Component
             $characteristics[] = __('Ekstrakurikuler Pasif');
         }
         
-        // Kehadiran
         if ($stats['avg_kehadiran'] >= 90) {
             $characteristics[] = __('Kehadiran Tinggi');
         } else if ($stats['avg_kehadiran'] >= 80) {
@@ -339,13 +311,10 @@ class ClusteringResult extends Component
         return implode(', ', $characteristics);
     }
     
-    /**
-     * Mendapatkan nilai huruf berdasarkan nilai numerik dan tipe
-     */
+   
     public function getNilaiHuruf($nilai, $tipe)
     {
         if ($tipe == 'sikap') {
-            // Konversi nilai numerik sikap menjadi huruf
             if ($nilai >= 85) return 'SB';
             if ($nilai >= 75) return 'B';
             if ($nilai >= 65) return 'C';

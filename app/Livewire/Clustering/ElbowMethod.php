@@ -28,15 +28,11 @@ class ElbowMethod extends Component
     
     public function runElbowMethod()
     {
-        Log::info('Memulai proses Elbow Method');
-        
-        // Set status pemrosesan
+     
         $this->isProcessing = true;
         
-        // Validasi input
         $this->validate();
         
-        // Ambil data siswa dari database
         $students = Student::all();
         
         if ($students->isEmpty()) {
@@ -48,15 +44,12 @@ class ElbowMethod extends Component
         Log::info('Jumlah data siswa: ' . $students->count());
         
         try {
-            // Persiapkan data untuk clustering (semua atribut)
             $data = [];
             foreach ($students as $student) {
-                // Konversi penilaian sikap, pramuka, dan pmr ke nilai numerik
                 $sikapValue = $this->convertSikapToNumeric($student->penilaian_sikap);
                 $pramukaValue = $this->convertScoreToNumeric($student->pramuka);
                 $pmrValue = $this->convertScoreToNumeric($student->pmr);
                 
-                // Gunakan semua atribut untuk clustering
                 $data[] = [
                     'id' => $student->id,
                     'uts' => (float) $student->uts,
@@ -68,17 +61,13 @@ class ElbowMethod extends Component
                 ];
             }
             
-            // Cek apakah data tersedia
             if (empty($data)) {
                 Log::error('Data untuk clustering kosong');
                 session()->flash('error', 'Data untuk clustering tidak tersedia.');
                 return;
             }
             
-            // Log data pertama untuk debugging
-            Log::info('Contoh data untuk clustering:', $data[0] ?? []);
-            
-            // Jalankan Elbow Method
+          
             $elbowMethod = new ElbowMethodService();
             $results = $elbowMethod->calculateElbowMethod(
                 $data, 
@@ -86,26 +75,21 @@ class ElbowMethod extends Component
                 $this->maxIterations
             );
             
-            Log::info('Hasil Elbow Method berhasil diproses');
-            
-            // Simpan hasil ke properties
+         
             $this->elbowResults = $results;
             
-            // Tentukan nilai K optimal dari hasil elbow method
+          
             $this->optimalK = $elbowMethod->findOptimalK($results);
-            Log::info('Nilai K optimal: ' . $this->optimalK);
-            
-            // Simpan ke session untuk digunakan di halaman lain
+          
             session()->put('optimalK', $this->optimalK);
             
-            // Dispatch event untuk update UI
+            
             $this->dispatch('elbowResultsUpdated', $results);
             
         } catch (\Exception $e) {
             Log::error('Error saat menjalankan Elbow Method: ' . $e->getMessage());
             session()->flash('error', 'Terjadi kesalahan: ' . $e->getMessage());
         } finally {
-            // Set status pemrosesan selesai
             $this->isProcessing = false;
         }
     }
