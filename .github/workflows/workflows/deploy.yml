@@ -36,7 +36,7 @@ jobs:
           php artisan route:cache
           php artisan view:cache
           
-      - name: Deploy to cPanel
+      - name: clusterapp
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
