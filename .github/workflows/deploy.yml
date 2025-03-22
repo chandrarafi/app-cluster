@@ -26,10 +26,14 @@ jobs:
         run: |
           npm install
           npm run build
-          
-      - name: Generate Application Key
-        run: php artisan key:generate --force
-        
+
+      - name: Create .env file
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          sed -i "s/APP_ENV=local/APP_ENV=production/" .env
+          sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
+
       - name: Cache Config
         run: |
           php artisan config:cache
