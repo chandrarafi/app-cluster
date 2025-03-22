@@ -7,7 +7,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
       
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -20,7 +21,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: '23.9.0'
           
       - name: Install NPM Dependencies & Build Assets
         run: |
@@ -36,19 +37,11 @@ jobs:
           php artisan route:cache
           php artisan view:cache
           
-      - name: clusterapp
+      - name: Deploy to cPanel
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: ${{ secrets.FTP_ROOT_DIR }}/
-          dangerous-clean-slate: false
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/vendor/**
-            .env.example
-            README.md
-            .editorconfig
+          log-level: verbose
