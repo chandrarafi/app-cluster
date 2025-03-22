@@ -14,21 +14,11 @@
         <div class="mb-6">
             <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div class="px-6 py-4 border-b">
-                    <h3 class="text-lg font-semibold text-gray-900">{{ __('3. Elbow Method') }}</h3>
+                    <h3 class="text-lg font-semibold text-gray-900">{{ __('Elbow Method') }}</h3>
                 </div>
 
                 <div class="px-6 py-4">
-                    <!-- Container untuk chart selalu ada di DOM, tetapi disembunyikan jika tidak ada hasil -->
-                    <div class="mt-5 @if(empty($elbowResults)) hidden @endif" id="result-container">
-                        <h2 class="text-lg font-semibold text-gray-800">Hasil Metode Elbow</h2>
-                        <div class="mt-3 bg-white rounded-lg shadow-md p-4">
-                            <div class="text-center mb-4">
-                                <p>Nilai K Optimal: <span class="font-bold text-blue-600">{{ $optimalK ?? '-' }}</span></p>
-                            </div>
-                            <div id="elbowChart" style="height: 400px;"></div>
-                        </div>
-                    </div>
-
+                    <!-- Container untuk form konfigurasi -->
                     <div class="mt-5 bg-white rounded-lg shadow-md p-5">
                         <h2 class="text-lg font-semibold text-gray-800 mb-4">Konfigurasi Metode Elbow</h2>
                         
@@ -61,9 +51,9 @@
                                 </div>
 
                                 <div class="flex justify-between items-center">
-                                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" wire:loading.attr="disabled">
+                                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" wire:loading.attr="disabled" wire:target="runElbowMethod">
                                         <span wire:loading.remove wire:target="runElbowMethod">Proses Metode Elbow</span>
-                                        <span wire:loading wire:target="runElbowMethod">
+                                        <span wire:loading wire:target="runElbowMethod" class="inline-flex items-center">
                                             <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -83,20 +73,21 @@
                                 {{ session('error') }}
                             </div>
                             @endif
-
-                            <div id="result-container" class="{{ empty($elbowResults) ? 'hidden' : '' }}">
-                                <div class="mt-4 border-t pt-4">
-                                    <h3 class="text-lg font-semibold text-gray-800 mb-2">Hasil Metode Elbow</h3>
-                                    
-                                    @if(!empty($elbowResults))
-                                    <div class="mb-4">
-                                        <p class="text-sm text-gray-600">Berdasarkan hasil metode elbow, jumlah cluster yang optimal adalah: <span class="font-bold text-blue-600">{{ $optimalK }}</span></p>
-                                    </div>
-                                    @endif
-                                    
-                                    <div id="elbowChart" class="w-full h-80"></div>
-                                </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Container untuk hasil elbow method -->
+                    <div id="elbow-results-container" class="{{ empty($elbowResults) ? 'hidden' : '' }} mt-6">
+                        <div class="mt-4 border-t pt-4">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-2">Hasil Metode Elbow</h3>
+                            
+                            @if(!empty($elbowResults))
+                            <div class="mb-4">
+                                <p class="text-sm text-gray-600">Berdasarkan hasil metode elbow, jumlah cluster yang optimal adalah: <span class="font-bold text-blue-600">{{ $optimalK }}</span></p>
                             </div>
+                            
+                            <div id="elbow-chart-container" class="w-full" style="height: 400px;"></div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -114,116 +105,188 @@
 </div>
 
 <script>
-// Script untuk membuat chart Elbow Method
-document.addEventListener('livewire:initialized', function () {
-    console.log('Livewire initialized');
+// Pendekatan baru untuk menangani rendering chart
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, mempersiapkan listeners');
+    setupChartEventListeners();
+});
+
+// Setup semua event listeners yang diperlukan
+function setupChartEventListeners() {
+    // Cegah duplikasi listener
+    if (window.chartListenersSetup) return;
+    window.chartListenersSetup = true;
     
-    // Tambahkan listener untuk event ketika hasil Elbow Method diperbarui
-    @this.on('elbowResultsUpdated', function(event) {
-        console.log('Event elbowResultsUpdated diterima:', event);
-        
-        // Tampilkan container hasil
-        const resultContainer = document.getElementById('result-container');
-        if (resultContainer) {
-            resultContainer.classList.remove('hidden');
-            console.log('Container hasil ditampilkan');
-            
-            // Buat chart
-            setTimeout(createChart, 200);
+    console.log('Setting up chart listeners');
+    
+    // 1. Listener untuk event Livewire spesifik untuk elbow results
+    Livewire.on('elbowResultsUpdated', function(data) {
+        console.log('Event elbowResultsUpdated diterima:', data);
+        showResults();
+        renderChart(data.results || []);
+    });
+    
+    // 2. Observer untuk perubahan properti Livewire
+    Livewire.hook('message.processed', (message, component) => {
+        if (component.fingerprint && component.fingerprint.name === 'clustering.elbow-method') {
+            console.log('Livewire component diupdate');
+            checkAndRenderChart();
         }
     });
     
-    // Fungsi untuk membuat chart
-    function createChart() {
-        console.log('Membuat chart...');
-        
-        const chartElement = document.getElementById('elbowChart');
-        if (!chartElement) {
-            console.error('Elemen chart tidak ditemukan');
-            return;
-        }
-        
-        const results = @this.elbowResults;
-        if (!results || results.length === 0) {
-            console.error('Tidak ada data hasil untuk ditampilkan');
-            return;
-        }
-        
-        console.log('Data untuk chart:', results);
-        
+    // 3. Tambahkan handler untuk tombol refresh
+    document.querySelector('button[wire\\:click="$refresh"]')?.addEventListener('click', function() {
+        console.log('Tombol refresh diklik');
+        setTimeout(checkAndRenderChart, 300);
+    });
+    
+    // 4. Tangani form submission dengan wireSubmit
+    document.querySelector('form[wire\\:submit\\.prevent="runElbowMethod"]')?.addEventListener('submit', function(e) {
+        console.log('Form elbow method disubmit');
+        // Tambahkan delay untuk memastikan Livewire selesai memproses hasil
+        setTimeout(() => {
+            checkAndRenderChart();
+        }, 1000); // Delay lebih lama untuk memastikan hasil diproses
+    });
+    
+    // 5. Periksa hasil pada inisialisasi halaman
+    setTimeout(checkAndRenderChart, 500);
+}
+
+// Fungsi untuk memeriksa apakah hasil tersedia dan merender chart jika ada
+function checkAndRenderChart() {
+    console.log('Memeriksa hasil elbow');
+    if (@this && @this.elbowResults && @this.elbowResults.length > 0) {
+        console.log('Hasil elbow ditemukan dari komponen Livewire');
+        showResults();
+        renderChart(@this.elbowResults);
+    } else {
+        console.log('Tidak ada hasil elbow yang tersedia di komponen');
+    }
+}
+
+// Fungsi untuk menampilkan container hasil
+function showResults() {
+    const resultContainer = document.getElementById('elbow-results-container');
+    if (resultContainer && resultContainer.classList.contains('hidden')) {
+        resultContainer.classList.remove('hidden');
+        console.log('Container hasil ditampilkan');
+    }
+}
+
+// Fungsi yang disederhanakan untuk membuat chart
+function renderChart(results) {
+    console.log('Memulai proses render chart dengan data:', results);
+    
+    if (!results || results.length === 0) {
+        console.error('Tidak ada data untuk dirender');
+        return;
+    }
+    
+    const chartContainer = document.getElementById('elbow-chart-container');
+    if (!chartContainer) {
+        console.error('Container chart tidak ditemukan di DOM');
+        return;
+    }
+    
+    // Hapus chart yang ada sebelum membuat yang baru
+    if (window.elbowChart) {
         try {
-            // Siapkan data untuk chart
-            const chartData = [];
-            
-            // Format data berdasarkan struktur hasil
-            if (Array.isArray(results)) {
-                // Untuk format array objek
-                for (const item of results) {
-                    if (item && item.k !== undefined && item.sse !== undefined) {
-                        chartData.push([item.k, parseFloat(item.sse)]);
-                    }
-                }
-            } else {
-                // Untuk format objek
-                for (const k in results) {
-                    if (results.hasOwnProperty(k)) {
-                        chartData.push([parseInt(k), parseFloat(results[k])]);
-                    }
+            window.elbowChart.destroy();
+            console.log('Chart sebelumnya dihapus');
+        } catch (e) {
+            console.warn('Gagal menghapus chart sebelumnya:', e);
+        }
+    }
+    
+    // Siapkan data untuk chart
+    const chartData = [];
+    try {
+        if (Array.isArray(results)) {
+            for (const item of results) {
+                if (item && typeof item.k !== 'undefined' && typeof item.sse !== 'undefined') {
+                    chartData.push([item.k, parseFloat(item.sse)]);
                 }
             }
-            
-            console.log('Data chart yang disiapkan:', chartData);
-            
-            // Reset container chart
-            chartElement.innerHTML = '';
-            
-            // Buat chart menggunakan Highcharts
-            Highcharts.chart('elbowChart', {
-                chart: {
-                    type: 'line'
-                },
-                title: {
-                    text: 'Metode Elbow - SSE vs Jumlah Cluster'
-                },
+        } else if (typeof results === 'object') {
+            for (const k in results) {
+                if (results.hasOwnProperty(k)) {
+                    chartData.push([parseInt(k), parseFloat(results[k])]);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error saat memproses data chart:', e);
+    }
+    
+    if (chartData.length === 0) {
+        console.error('Tidak ada data valid untuk chart setelah diproses');
+        return;
+    }
+    
+    console.log('Data chart siap:', chartData);
+    
+    // Buat chart dengan data yang sudah diproses
+    setTimeout(() => {
+        try {
+            window.elbowChart = Highcharts.chart('elbow-chart-container', {
+                chart: { type: 'line' },
+                title: { text: 'Metode Elbow - SSE vs Jumlah Cluster' },
                 xAxis: {
-                    title: {
-                        text: 'Jumlah Cluster (K)'
-                    },
+                    title: { text: 'Jumlah Cluster (K)' },
                     allowDecimals: false
                 },
                 yAxis: {
-                    title: {
-                        text: 'Sum of Squared Errors (SSE)'
-                    }
+                    title: { text: 'Sum of Squared Errors (SSE)' }
                 },
                 series: [{
                     name: 'SSE',
                     data: chartData,
                     color: '#3b82f6',
-                    marker: {
-                        enabled: true
-                    }
+                    marker: { enabled: true }
                 }],
+                plotOptions: {
+                    line: {
+                        dataLabels: {
+                            enabled: true,
+                            formatter: function() {
+                                return Highcharts.numberFormat(this.y, 2);
+                            }
+                        }
+                    }
+                },
                 tooltip: {
                     formatter: function() {
                         return '<b>K = ' + this.x + '</b><br>SSE: ' + Highcharts.numberFormat(this.y, 2);
                     }
                 },
-                credits: {
-                    enabled: false
-                }
+                credits: { enabled: false }
             });
-            
             console.log('Chart berhasil dibuat');
         } catch (error) {
             console.error('Error saat membuat chart:', error);
+            
+            // Tambahkan fallback jika chart gagal dibuat
+            console.log('Mencoba fallback untuk pembuatan chart...');
+            const fallbackDelay = 800;
+            setTimeout(() => {
+                try {
+                    // Pastikan container masih tersedia
+                    if (document.getElementById('elbow-chart-container')) {
+                        window.elbowChart = Highcharts.chart('elbow-chart-container', {
+                            chart: { type: 'line' },
+                            title: { text: 'Metode Elbow - SSE vs Jumlah Cluster' },
+                            series: [{ name: 'SSE', data: chartData }]
+                        });
+                        console.log('Chart fallback berhasil dibuat');
+                    } else {
+                        console.error('Container chart tidak ditemukan saat fallback');
+                    }
+                } catch (e) {
+                    console.error('Fallback chart juga gagal:', e);
+                }
+            }, fallbackDelay);
         }
-    }
-    
-    // Jika ada hasil saat halaman dimuat, buat chart
-    if (@this.elbowResults) {
-        console.log('Hasil Elbow ditemukan saat inisialisasi, membuat chart...');
-        setTimeout(createChart, 500);
-    }
-});
+    }, 300);
+}
 </script>

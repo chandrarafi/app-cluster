@@ -5,6 +5,7 @@ namespace App\Livewire\Clustering;
 use App\Models\Student;
 use App\Services\KMeans\ElbowMethodService;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Livewire\Component;
 
 class ElbowMethod extends Component
@@ -16,7 +17,22 @@ class ElbowMethod extends Component
     public $optimalK = null;
     public $isProcessing = false;
     
-    // Validasi input
+    public function mount()
+    {
+        if (Session::has('elbow_results')) {
+            $sessionData = Session::get('elbow_results');
+            if (isset($sessionData['results']) && !empty($sessionData['results'])) {
+                $this->elbowResults = $sessionData['results'];
+                Log::info('Memuat hasil elbow dari session: ' . count($this->elbowResults) . ' item');
+            }
+            
+            if (isset($sessionData['optimalK'])) {
+                $this->optimalK = $sessionData['optimalK'];
+                Log::info('Memuat K optimal dari session: ' . $this->optimalK);
+            }
+        }
+    }
+    
     public function rules()
     {
         return [
@@ -28,16 +44,21 @@ class ElbowMethod extends Component
     
     public function runElbowMethod()
     {
-     
+        Log::info('Memulai proses Elbow Method');
+        
         $this->isProcessing = true;
         
         $this->validate();
+        
+        $this->elbowResults = [];
+        $this->optimalK = null;
         
         $students = Student::all();
         
         if ($students->isEmpty()) {
             Log::error('Tidak ada data siswa untuk di-cluster');
             session()->flash('error', 'Tidak ada data siswa untuk proses clustering.');
+            $this->isProcessing = false;
             return;
         }
         
@@ -64,10 +85,12 @@ class ElbowMethod extends Component
             if (empty($data)) {
                 Log::error('Data untuk clustering kosong');
                 session()->flash('error', 'Data untuk clustering tidak tersedia.');
+                $this->isProcessing = false;
                 return;
             }
             
-          
+            Log::info('Contoh data untuk clustering:', $data[0] ?? []);
+            
             $elbowMethod = new ElbowMethodService();
             $results = $elbowMethod->calculateElbowMethod(
                 $data, 
@@ -75,16 +98,24 @@ class ElbowMethod extends Component
                 $this->maxIterations
             );
             
-         
+            Log::info('Hasil Elbow Method berhasil diproses');
+            
             $this->elbowResults = $results;
             
-          
             $this->optimalK = $elbowMethod->findOptimalK($results);
-          
-            session()->put('optimalK', $this->optimalK);
+            Log::info('Nilai K optimal: ' . $this->optimalK);
             
+            Session::put('elbow_results', [
+                'results' => $results,
+                'optimalK' => $this->optimalK
+            ]);
             
-            $this->dispatch('elbowResultsUpdated', $results);
+            Session::put('optimalK', $this->optimalK);
+            
+            Log::info('Data elbow disimpan ke session');
+            
+            $this->dispatch('elbowResultsUpdated', ['results' => $results, 'optimalK' => $this->optimalK]);
+            Log::info('Event elbowResultsUpdated dipancarkan dengan ' . count($results) . ' hasil');
             
         } catch (\Exception $e) {
             Log::error('Error saat menjalankan Elbow Method: ' . $e->getMessage());
@@ -94,7 +125,6 @@ class ElbowMethod extends Component
         }
     }
     
-    // Konversi nilai sikap ke nilai numerik
     private function convertSikapToNumeric($sikap)
     {
         return match ($sikap) {
@@ -106,7 +136,6 @@ class ElbowMethod extends Component
         };
     }
     
-    // Konversi nilai huruf ke nilai numerik
     private function convertScoreToNumeric($score)
     {
         return match ($score) {

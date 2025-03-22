@@ -7,9 +7,6 @@ use Illuminate\Http\Request;
 
 class StudentDatasetController extends Controller
 {
-    /**
-     * Download template CSV untuk import data siswa
-     */
     public function downloadTemplate()
     {
         $headers = [
@@ -17,7 +14,6 @@ class StudentDatasetController extends Controller
             'Content-Disposition' => 'attachment; filename="template_siswa.csv"',
         ];
         
-        // Buat file CSV secara langsung sebagai string
         $csvContent = "nama_siswa,kelas,nilai_uts,nilai_uas,penilaian_sikap,pramuka,pmr,kehadiran_siswa\n";
         $csvContent .= "Putri Santoso,8C,87,86,A,A,A,92%\n";
         $csvContent .= "Dewi Nurhayati,8C,83,83,B,B,B,93%\n";
@@ -26,9 +22,7 @@ class StudentDatasetController extends Controller
         return response($csvContent, 200, $headers);
     }
     
-    /**
-     * Import data siswa dari file CSV
-     */
+
     public function importCSV(Request $request)
     {
         $request->validate([
@@ -40,7 +34,6 @@ class StudentDatasetController extends Controller
         
         $data = array_map('str_getcsv', file($path));
         
-        // Hapus baris header jika ada
         if (isset($data[0]) && is_array($data[0]) && 
             (in_array('nama_siswa', $data[0]) || in_array('Nama Siswa', $data[0]))) {
             array_shift($data);
@@ -67,7 +60,6 @@ class StudentDatasetController extends Controller
                 $pmr = strtoupper(trim($row[6]));
                 $kehadiran = $this->parseNumber(trim($row[7]));
                 
-                // Validasi nilai
                 if (!in_array($penilaian_sikap, ['SB', 'B', 'C', 'K'])) {
                     throw new \Exception("Nilai sikap tidak valid ($penilaian_sikap). Harus SB, B, C, atau K.");
                 }
@@ -108,20 +100,16 @@ class StudentDatasetController extends Controller
             ->with('import_errors', $errors);
     }
 
-    /**
-     * Parse nilai numerik dari string
-     */
+
     private function parseNumber($value)
     {
-        // Jika berupa persentase, hilangkan simbol %
         if (strpos($value, '%') !== false) {
             $value = str_replace('%', '', $value);
         }
         
-        // Hapus karakter non-numerik kecuali titik untuk desimal
+      
         $value = preg_replace('/[^0-9.]/', '', $value);
         
-        // Jika mengandung titik, parse sebagai float
         if (strpos($value, '.') !== false) {
             return (float) $value;
         }

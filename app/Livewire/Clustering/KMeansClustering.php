@@ -20,7 +20,6 @@ class KMeansClustering extends Component
     
     public function mount()
     {
-        // Ambil data hasil clustering dari session
         $kmeansResult = Session::get('kmeans_result');
         
         if ($kmeansResult && isset($kmeansResult['iterationHistory'])) {
@@ -30,10 +29,8 @@ class KMeansClustering extends Component
             $this->converged = $kmeansResult['converged'];
             $this->finalSSE = $kmeansResult['sse'];
             
-            // Validasi data iterasi
             $this->validateIterationData();
             
-            // Ambil parameter yang digunakan
             $setupParams = Session::get('kmeans_params');
             if ($setupParams) {
                 $this->jumlahCluster = $setupParams['jumlahCluster'] ?? 0;
@@ -51,14 +48,12 @@ class KMeansClustering extends Component
         }
         
         foreach ($this->iterationHistory as $key => $iteration) {
-            // Validasi struktur data yang dibutuhkan
             if (!isset($iteration['iteration']) || 
                 !isset($iteration['centroids']) || 
                 !isset($iteration['sse']) ||
                 !isset($iteration['distanceMatrix']) ||
                 !isset($iteration['clusterAssignments'])) {
                 
-                // Jika salah satu kunci tidak ada, jalankan proses recovery
                 $this->recoverMissingData($key);
             }
         }
@@ -69,7 +64,6 @@ class KMeansClustering extends Component
         if (!isset($this->iterationHistory[$iterIndex]['distanceMatrix'])) {
             $this->iterationHistory[$iterIndex]['distanceMatrix'] = [];
             
-            // Jika ada data clusters, gunakan untuk membuat distanceMatrix palsu
             if (isset($this->iterationHistory[$iterIndex]['clusters'])) {
                 foreach ($this->iterationHistory[$iterIndex]['clusters'] as $clusterIdx => $cluster) {
                     foreach ($cluster as $item) {
@@ -83,7 +77,6 @@ class KMeansClustering extends Component
                             'distances' => $distances
                         ];
                         
-                        // Juga buat clusterAssignments jika tidak ada
                         if (!isset($this->iterationHistory[$iterIndex]['clusterAssignments'])) {
                             $this->iterationHistory[$iterIndex]['clusterAssignments'] = [];
                         }
@@ -121,9 +114,9 @@ class KMeansClustering extends Component
                 'features' => [
                     $student->uts,
                     $student->uas,
-                    $student->getNilaiSikapNumerikAttribute(), // Konversi dari huruf ke angka
-                    $student->getNilaiPramukaNumerikAttribute(), // Konversi pramuka dari huruf ke angka
-                    $student->getNilaiPmrNumerikAttribute(), // Konversi pmr dari huruf ke angka
+                    $student->getNilaiSikapNumerikAttribute(), 
+                    $student->getNilaiPramukaNumerikAttribute(), 
+                    $student->getNilaiPmrNumerikAttribute(), 
                     $student->kehadiran
                 ],
                 'name' => $student->nama,

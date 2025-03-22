@@ -13,18 +13,18 @@
 
             <flux:navlist variant="outline" class="text-white">
                 <flux:navlist.group :heading="__('Platform')" class="grid text-gray-200">
-                    <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate class="text-white hover:bg-blue-700">{{ __('Dashboard') }}</flux:navlist.item>
+                    <flux:navlist.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" class="text-white hover:bg-blue-700">{{ __('Dashboard') }}</flux:navlist.item>
                 </flux:navlist.group>
                 
                 <flux:navlist.group :heading="__('Data Management')" class="grid text-gray-200">
-                    <flux:navlist.item icon="circle-stack" :href="route('student.dataset')" :current="request()->routeIs('student.dataset')" wire:navigate class="text-white hover:bg-blue-700">{{ __('Dataset Siswa') }}</flux:navlist.item>
+                    <flux:navlist.item icon="circle-stack" :href="route('student.dataset')" :current="request()->routeIs('student.dataset')" class="text-white hover:bg-blue-700">{{ __('Dataset Siswa') }}</flux:navlist.item>
                 </flux:navlist.group>
                 
                 <flux:navlist.group :heading="__('Analisis Clustering')" class="grid text-gray-200">
-                    <flux:navlist.item icon="chart-bar" :href="route('clustering.elbow')" :current="request()->routeIs('clustering.elbow')" wire:navigate class="text-white hover:bg-blue-700">{{ __('1. Elbow Method') }}</flux:navlist.item>
-                    <flux:navlist.item icon="adjustments-horizontal" :href="route('clustering.setup')" :current="request()->routeIs('clustering.setup')" wire:navigate class="text-white hover:bg-blue-700">{{ __('2. Setup Clustering') }}</flux:navlist.item>
-                    <flux:navlist.item icon="circle-stack" :href="route('clustering.kmeans')" :current="request()->routeIs('clustering.kmeans')" wire:navigate class="text-white hover:bg-blue-700">{{ __('3. Proses K-Means') }}</flux:navlist.item>
-                    <flux:navlist.item icon="presentation-chart-bar" :href="route('clustering.result')" :current="request()->routeIs('clustering.result')" wire:navigate class="text-white hover:bg-blue-700">{{ __('4. Hasil Clustering') }}</flux:navlist.item>
+                    <flux:navlist.item icon="chart-bar" :href="route('clustering.elbow')" :current="request()->routeIs('clustering.elbow')" class="text-white hover:bg-blue-700">{{ __('1. Elbow Method') }}</flux:navlist.item>
+                    <flux:navlist.item icon="adjustments-horizontal" :href="route('clustering.setup')" :current="request()->routeIs('clustering.setup')" class="text-white hover:bg-blue-700">{{ __('2. Setup Clustering') }}</flux:navlist.item>
+                    <flux:navlist.item icon="circle-stack" :href="route('clustering.kmeans')" :current="request()->routeIs('clustering.kmeans')" class="text-white hover:bg-blue-700">{{ __('3. Proses K-Means') }}</flux:navlist.item>
+                    <flux:navlist.item icon="presentation-chart-bar" :href="route('clustering.result')" :current="request()->routeIs('clustering.result')" class="text-white hover:bg-blue-700">{{ __('4. Hasil Clustering') }}</flux:navlist.item>
                 </flux:navlist.group>
             </flux:navlist>
 

@@ -99,7 +99,7 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                                             </svg>
                                         </div>
-<div>
+                                        <div>
                                             <p class="text-sm font-medium text-amber-700">{{ __('SSE') }}</p>
                                             <p class="text-2xl font-bold text-amber-900">{{ number_format($sse, 2) }}</p>
                                         </div>
@@ -112,7 +112,7 @@
                         <div class="mb-8">
                             <h4 class="text-lg font-medium text-gray-700 mb-3">{{ __('Visualisasi Cluster') }}</h4>
                             
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
                                 <!-- Distribusi Cluster -->
                                 <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                                     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
@@ -123,15 +123,35 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Karakteristik Cluster -->
-                                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-                                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                                        <h5 class="font-medium text-gray-700">{{ __('Karakteristik Cluster') }}</h5>
-                                    </div>
-                                    <div class="p-4">
-                                        <div wire:ignore class="h-80" id="cluster-characteristics-chart"></div>
-                                    </div>
-                                </div>
+                              <!-- Hasil Metode Elbow -->
+@if($elbowResults)
+<div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+    <div class="px-6 py-4 border-b border-zinc-200">
+        <h3 class="text-lg font-semibold text-gray-900">{{ __('Hasil Metode Elbow') }}</h3>
+    </div>
+    <div class="p-6">
+        <div class="grid grid-cols-1 gap-6">
+            <div class="bg-gray-50 p-4 rounded-lg">
+                <p class="mb-3 text-sm text-gray-600">
+                    Metode Elbow digunakan untuk menentukan jumlah cluster (K) optimal dengan menemukan titik di mana penambahan cluster tidak lagi memberikan penurunan SSE yang signifikan.
+                </p>
+                <div class="flex items-center mb-4">
+                    <div class="rounded-full bg-blue-100 p-2 mr-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-base font-medium text-gray-800">Nilai K Optimal: <span class="text-blue-600 font-semibold">{{ $optimalK }}</span></p>
+                    </div>
+                </div>
+                <div id="elbowChart" class="h-64 w-full"></div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
+                              
                             </div>
                         </div>
 
@@ -326,181 +346,282 @@
     </div>
 </div>
 
-<!-- Visualisasi Cluster -->
-<div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="px-6 py-4 border-b border-zinc-200">
-        <h3 class="text-lg font-semibold text-gray-900">{{ __('Visualisasi Cluster') }}</h3>
-    </div>
-    <div class="p-6">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- ... existing code ... -->
-        </div>
-    </div>
-</div>
 
-<!-- Hasil Metode Elbow -->
-@if($elbowResults)
-<div class="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-    <div class="px-6 py-4 border-b border-zinc-200">
-        <h3 class="text-lg font-semibold text-gray-900">{{ __('Hasil Metode Elbow') }}</h3>
-    </div>
-    <div class="p-6">
-        <div class="grid grid-cols-1 gap-6">
-            <div class="bg-gray-50 p-4 rounded-lg">
-                <p class="mb-3 text-sm text-gray-600">
-                    Metode Elbow digunakan untuk menentukan jumlah cluster (K) optimal dengan menemukan titik di mana penambahan cluster tidak lagi memberikan penurunan SSE yang signifikan.
-                </p>
-                <div class="flex items-center mb-4">
-                    <div class="rounded-full bg-blue-100 p-2 mr-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p class="text-base font-medium text-gray-800">Nilai K Optimal: <span class="text-blue-600 font-semibold">{{ $optimalK }}</span></p>
-                    </div>
-                </div>
-                <div id="elbowChart" class="h-64 w-full"></div>
-            </div>
-        </div>
-    </div>
-</div>
-@endif
+
+
 
 <!-- Script untuk chart -->
 <script>
+    // Variabel global untuk menyimpan instance charts
+    window.clusterCharts = {
+        distribution: null,
+        characteristics: null,
+        elbow: null
+    };
+    
     document.addEventListener('DOMContentLoaded', function() {
-        // Render charts if data is available
+        console.log('DOM loaded untuk halaman hasil clustering');
+        setupChartRendering();
+    });
+    
+    // Setup rendering chart
+    function setupChartRendering() {
+        // Cegah duplikasi setup
+        if (window.chartsSetupDone) return;
+        window.chartsSetupDone = true;
+        
+        console.log('Setting up chart rendering untuk hasil clustering');
+        
+        // Render charts jika data tersedia
         if (document.getElementById('cluster-distribution-chart')) {
-            renderDistributionChart();
-            renderCharacteristicsChart();
+            setTimeout(() => {
+                renderAllCharts();
+            }, 300);
         }
         
-        function renderDistributionChart() {
-            try {
-                const clusterCounts = @json($this->getClusterCounts());
-                const clusterColors = @json($this->getClusterPieColors());
-                
-                Highcharts.chart('cluster-distribution-chart', {
-                    chart: {
-                        type: 'pie',
-                        backgroundColor: 'transparent'
-                    },
-                    title: {
-                        text: 'Distribusi Siswa per Cluster',
-                        style: { fontSize: '14px' }
-                    },
-                    tooltip: {
-                        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br>Jumlah: <b>{point.y}</b>'
-                    },
-                    accessibility: {
-                        point: {
-                            valueSuffix: '%'
-                        }
-                    },
-                    plotOptions: {
-                        pie: {
-                            allowPointSelect: true,
-                            cursor: 'pointer',
-                            dataLabels: {
-                                enabled: true,
-                                format: '<b>Cluster {point.name}</b>: {point.percentage:.1f} %',
-                                style: {
-                                    fontWeight: 'normal'
-                                }
-                            },
-                            showInLegend: true
-                        }
-                    },
-                    series: [{
-                        name: 'Persentase',
-                        colorByPoint: true,
-                        data: clusterCounts.map((count, index) => ({
-                            name: (index + 1).toString(),
-                            y: count,
-                            color: clusterColors[index % clusterColors.length]
-                        }))
-                    }]
-                });
-            } catch (error) {
-                console.error('Error rendering distribution chart:', error);
+        // Tambahkan listener untuk event Livewire
+        Livewire.hook('message.processed', (message, component) => {
+            if (component && component.fingerprint && component.fingerprint.name === 'clustering.clustering-result') {
+                console.log('Livewire component clustering-result diupdate');
+                setTimeout(() => {
+                    renderAllCharts();
+                }, 300);
             }
-        }
+        });
         
-        function renderCharacteristicsChart() {
-            try {
-                const clusterNames = [];
-                const dataPoints = @json($this->getClusterDataForRadarChart());
-                
-                for (let i = 0; i < dataPoints.length; i++) {
-                    clusterNames.push('Cluster ' + (i + 1));
+        // Tambahkan listener untuk navigasi
+        document.addEventListener('livewire:navigated', function() {
+            console.log('Livewire navigated event');
+            setTimeout(() => {
+                if (document.getElementById('cluster-distribution-chart')) {
+                    renderAllCharts();
                 }
-                
-                Highcharts.chart('cluster-characteristics-chart', {
-                    chart: {
-                        polar: true,
-                        backgroundColor: 'transparent'
-                    },
-                    title: {
-                        text: 'Karakteristik Cluster',
-                        style: { fontSize: '14px' }
-                    },
-                    pane: {
-                        size: '80%'
-                    },
-                    xAxis: {
-                        categories: ['UTS', 'UAS', 'Sikap', 'Pramuka', 'PMR', 'Kehadiran'],
-                        tickmarkPlacement: 'on',
-                        lineWidth: 0
-                    },
-                    yAxis: {
-                        gridLineInterpolation: 'polygon',
-                        lineWidth: 0,
-                        min: 0,
-                        max: 100
-                    },
-                    tooltip: {
-                        shared: true,
-                        pointFormat: '<span style="color:{series.color}">{series.name}: <b>{point.y:,.0f}</b><br/>'
-                    },
-                    legend: {
-                        align: 'right',
-                        verticalAlign: 'middle',
-                        layout: 'vertical'
-                    },
-                    series: dataPoints.map((data, index) => ({
-                        name: 'Cluster ' + (index + 1),
-                        data: data,
-                        pointPlacement: 'on',
-                        color: @json($this->getClusterHighchartsColors())[index % @json($this->getClusterHighchartsColors()).length]
-                    })),
-                    responsive: {
-                        rules: [{
-                            condition: {
-                                maxWidth: 500
-                            },
-                            chartOptions: {
-                                legend: {
-                                    align: 'center',
-                                    verticalAlign: 'bottom',
-                                    layout: 'horizontal'
-                                },
-                                pane: {
-                                    size: '70%'
-                                }
-                            }
-                        }]
-                    }
-                });
-            } catch (error) {
-                console.error('Error rendering characteristics chart:', error);
-            }
+            }, 300);
+        });
+    }
+    
+    // Render semua chart yang diperlukan
+    function renderAllCharts() {
+        console.log('Rendering semua chart hasil clustering');
+        renderDistributionChart();
+        renderCharacteristicsChart();
+        
+        // Memanggil renderElbowChart hanya jika ada data elbow
+        var elbowChartContainer = document.getElementById('elbowChart');
+        if (elbowChartContainer) {
+            renderElbowChart();
+        } else {
+            console.log('Container elbow chart tidak ditemukan');
         }
-
-        // Elbow Method Chart
-        @if($elbowResults)
-        const elbowResults = @json($elbowResults);
-        if (elbowResults && elbowResults.length > 0) {
+    }
+    
+    // Fungsi untuk membuat chart distribusi
+    function renderDistributionChart() {
+        try {
+            // Pastikan element ada di DOM
+            const chartContainer = document.getElementById('cluster-distribution-chart');
+            if (!chartContainer) {
+                console.log('Container chart distribusi tidak ditemukan');
+                return;
+            }
+            
+            console.log('Rendering chart distribusi cluster');
+            
+            // Hapus chart sebelumnya jika ada
+            if (window.clusterCharts.distribution) {
+                try {
+                    window.clusterCharts.distribution.destroy();
+                } catch (e) {
+                    console.warn('Gagal menghapus chart distribusi sebelumnya:', e);
+                }
+            }
+            
+            // Dapatkan data
+            const clusterCounts = @json($this->getClusterCounts());
+            const clusterColors = @json($this->getClusterPieColors());
+            
+            if (!clusterCounts || clusterCounts.length === 0) {
+                console.log('Tidak ada data distribusi cluster');
+                return;
+            }
+            
+            // Buat chart baru
+            window.clusterCharts.distribution = Highcharts.chart('cluster-distribution-chart', {
+                chart: {
+                    type: 'pie',
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: 'Distribusi Siswa per Cluster',
+                    style: { fontSize: '14px' }
+                },
+                tooltip: {
+                    pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br>Jumlah: <b>{point.y}</b>'
+                },
+                accessibility: {
+                    point: {
+                        valueSuffix: '%'
+                    }
+                },
+                plotOptions: {
+                    pie: {
+                        allowPointSelect: true,
+                        cursor: 'pointer',
+                        dataLabels: {
+                            enabled: true,
+                            format: '<b>Cluster {point.name}</b>: {point.percentage:.1f} %',
+                            style: {
+                                fontWeight: 'normal'
+                            }
+                        },
+                        showInLegend: true
+                    }
+                },
+                series: [{
+                    name: 'Persentase',
+                    colorByPoint: true,
+                    data: clusterCounts.map((count, index) => ({
+                        name: (index + 1).toString(),
+                        y: count,
+                        color: clusterColors[index % clusterColors.length]
+                    }))
+                }]
+            });
+            
+            console.log('Chart distribusi berhasil dibuat');
+        } catch (error) {
+            console.error('Error rendering distribution chart:', error);
+        }
+    }
+    
+    // Fungsi untuk membuat chart karakteristik
+    function renderCharacteristicsChart() {
+        try {
+            // Pastikan element ada di DOM
+            const chartContainer = document.getElementById('cluster-characteristics-chart');
+            if (!chartContainer) {
+                console.log('Container chart karakteristik tidak ditemukan');
+                return;
+            }
+            
+            console.log('Rendering chart karakteristik cluster');
+            
+            // Hapus chart sebelumnya jika ada
+            if (window.clusterCharts.characteristics) {
+                try {
+                    window.clusterCharts.characteristics.destroy();
+                } catch (e) {
+                    console.warn('Gagal menghapus chart karakteristik sebelumnya:', e);
+                }
+            }
+            
+            // Dapatkan data
+            const clusterNames = [];
+            const dataPoints = @json($this->getClusterDataForRadarChart());
+            
+            if (!dataPoints || dataPoints.length === 0) {
+                console.log('Tidak ada data karakteristik cluster');
+                return;
+            }
+            
+            for (let i = 0; i < dataPoints.length; i++) {
+                clusterNames.push('Cluster ' + (i + 1));
+            }
+            
+            // Buat chart baru
+            window.clusterCharts.characteristics = Highcharts.chart('cluster-characteristics-chart', {
+                chart: {
+                    polar: true,
+                    backgroundColor: 'transparent'
+                },
+                title: {
+                    text: 'Karakteristik Cluster',
+                    style: { fontSize: '14px' }
+                },
+                pane: {
+                    size: '80%'
+                },
+                xAxis: {
+                    categories: ['UTS', 'UAS', 'Sikap', 'Pramuka', 'PMR', 'Kehadiran'],
+                    tickmarkPlacement: 'on',
+                    lineWidth: 0
+                },
+                yAxis: {
+                    gridLineInterpolation: 'polygon',
+                    lineWidth: 0,
+                    min: 0,
+                    max: 100
+                },
+                tooltip: {
+                    shared: true,
+                    pointFormat: '<span style="color:{series.color}">{series.name}: <b>{point.y:,.0f}</b><br/>'
+                },
+                legend: {
+                    align: 'right',
+                    verticalAlign: 'middle',
+                    layout: 'vertical'
+                },
+                series: dataPoints.map((data, index) => ({
+                    name: 'Cluster ' + (index + 1),
+                    data: data,
+                    pointPlacement: 'on',
+                    color: @json($this->getClusterHighchartsColors())[index % @json($this->getClusterHighchartsColors()).length]
+                })),
+                responsive: {
+                    rules: [{
+                        condition: {
+                            maxWidth: 500
+                        },
+                        chartOptions: {
+                            legend: {
+                                align: 'center',
+                                verticalAlign: 'bottom',
+                                layout: 'horizontal'
+                            },
+                            pane: {
+                                size: '70%'
+                            }
+                        }
+                    }]
+                }
+            });
+            
+            console.log('Chart karakteristik berhasil dibuat');
+        } catch (error) {
+            console.error('Error rendering characteristics chart:', error);
+        }
+    }
+    
+    // Fungsi untuk membuat chart elbow
+    function renderElbowChart() {
+        try {
+            // Pastikan element ada di DOM dan data tersedia
+            const chartContainer = document.getElementById('elbowChart');
+            if (!chartContainer) {
+                console.log('Container chart elbow tidak ditemukan');
+                return;
+            }
+            
+            console.log('Rendering chart elbow pada halaman hasil');
+            
+            // Dapatkan data elbow results dari server
+            const elbowResults = @json($elbowResults ?? []);
+            
+            // Periksa apakah data tersedia
+            if (!elbowResults || elbowResults.length === 0) {
+                console.log('Tidak ada data elbow results');
+                return;
+            }
+            
+            // Hapus chart sebelumnya jika ada
+            if (window.clusterCharts.elbow) {
+                try {
+                    window.clusterCharts.elbow.destroy();
+                } catch (e) {
+                    console.warn('Gagal menghapus chart elbow sebelumnya:', e);
+                }
+            }
+            
             // Persiapkan data untuk chart elbow
             const chartData = [];
             for (const result of elbowResults) {
@@ -509,60 +630,72 @@
                 }
             }
             
-            // Buat chart
-            if (chartData.length > 0) {
-                Highcharts.chart('elbowChart', {
-                    chart: {
-                        type: 'line'
-                    },
-                    title: {
-                        text: 'Metode Elbow - SSE vs Jumlah Cluster',
-                        style: {
-                            fontSize: '14px'
-                        }
-                    },
-                    xAxis: {
-                        title: {
-                            text: 'Jumlah Cluster (K)'
+            if (chartData.length === 0) {
+                console.log('Tidak ada data valid untuk chart elbow');
+                return;
+            }
+            
+            // Buat chart baru
+            setTimeout(() => {
+                try {
+                    window.clusterCharts.elbow = Highcharts.chart('elbowChart', {
+                        chart: {
+                            type: 'line'
                         },
-                        allowDecimals: false
-                    },
-                    yAxis: {
                         title: {
-                            text: 'Sum of Squared Errors (SSE)'
-                        }
-                    },
-                    series: [{
-                        name: 'SSE',
-                        data: chartData,
-                        color: '#3b82f6',
-                        marker: {
-                            enabled: true,
-                            radius: 4
-                        }
-                    }],
-                    plotOptions: {
-                        line: {
-                            dataLabels: {
+                            text: 'Metode Elbow - SSE vs Jumlah Cluster',
+                            style: {
+                                fontSize: '14px'
+                            }
+                        },
+                        xAxis: {
+                            title: {
+                                text: 'Jumlah Cluster (K)'
+                            },
+                            allowDecimals: false
+                        },
+                        yAxis: {
+                            title: {
+                                text: 'Sum of Squared Errors (SSE)'
+                            }
+                        },
+                        series: [{
+                            name: 'SSE',
+                            data: chartData,
+                            color: '#3b82f6',
+                            marker: {
                                 enabled: true,
-                                formatter: function() {
-                                    return Highcharts.numberFormat(this.y, 2);
+                                radius: 4
+                            }
+                        }],
+                        plotOptions: {
+                            line: {
+                                dataLabels: {
+                                    enabled: true,
+                                    formatter: function() {
+                                        return Highcharts.numberFormat(this.y, 2);
+                                    }
                                 }
                             }
+                        },
+                        tooltip: {
+                            formatter: function() {
+                                return '<b>K = ' + this.x + '</b><br>SSE: ' + Highcharts.numberFormat(this.y, 2);
+                            }
+                        },
+                        credits: {
+                            enabled: false
                         }
-                    },
-                    tooltip: {
-                        formatter: function() {
-                            return '<b>K = ' + this.x + '</b><br>SSE: ' + Highcharts.numberFormat(this.y, 2);
-                        }
-                    },
-                    credits: {
-                        enabled: false
-                    }
-                });
-            }
+                    });
+                    
+                    console.log('Chart elbow berhasil dibuat');
+                } catch (chartError) {
+                    console.error('Error creating elbow chart:', chartError);
+                }
+            }, 300);
+        } catch (error) {
+            console.error('Error dalam fungsi renderElbowChart:', error);
         }
-        @endif
-    });
+    }
 </script>
 </div>

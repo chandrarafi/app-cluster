@@ -10,7 +10,7 @@ class ClusteringController extends Controller
 {
     private function processData($data)
     {
-        // Proses data untuk dikirim ke front-end
+      
         $processedData = [];
         
         foreach ($data as $index => $item) {
@@ -20,10 +20,10 @@ class ClusteringController extends Controller
                 'kelas' => $item->kelas,
                 'uts' => $item->uts,
                 'uas' => $item->uas,
-                'penilaian_sikap' => $item->penilaian_sikap, // Tetap sebagai huruf
-                'pramuka' => $item->pramuka, // Tetap sebagai huruf
-                'pmr' => $item->pmr, // Tetap sebagai huruf
-                'kehadiran' => $item->kehadiran . '%', // Format sebagai persentase
+                'penilaian_sikap' => $item->penilaian_sikap,
+                'pramuka' => $item->pramuka,
+                'pmr' => $item->pmr,
+                'kehadiran' => $item->kehadiran . '%',
                 'cluster' => $item->cluster ?? 0
             ];
         }

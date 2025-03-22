@@ -24,14 +24,12 @@ class SetupCluster extends Component
     
     public function mount()
     {
-        // Cek jumlah data siswa
         $jumlahData = Student::count();
         if ($jumlahData < 10) {
             $this->isTooFewData = true;
             $this->errorMessage = "Data siswa tidak mencukupi untuk clustering. Minimal diperlukan 10 data siswa.";
         }
         
-        // Ambil nilai K optimal dari session jika tersedia
         if (session()->has('optimalK')) {
             $optimalK = session()->get('optimalK');
             if ($optimalK >= 2 && $optimalK <= 10) {
@@ -47,7 +45,6 @@ class SetupCluster extends Component
         try {
             $this->isProcessing = true;
             
-            // Ambil data untuk clustering
             $data = $this->getClusteringData();
             
             if (count($data) < $this->jumlahCluster) {
@@ -57,21 +54,17 @@ class SetupCluster extends Component
                 return;
             }
             
-            // Simpan parameter untuk digunakan di halaman K-Means
             Session::put('kmeans_params', [
                 'jumlahCluster' => $this->jumlahCluster,
                 'maxIterasi' => $this->maxIterasi,
                 'tipeCentroid' => $this->tipeCentroid
             ]);
             
-            // Jalankan algoritma kmeans
             $result = $this->kMeans($data, $this->jumlahCluster, $this->maxIterasi, $this->tipeCentroid);
             
-            // Simpan hasil ke session
             Session::put('kmeans_result', $result);
             
-            // Redirect ke halaman hasil clustering
-            return redirect()->route('clustering.result');
+            return redirect()->route('clustering.kmeans');
             
         } catch (\Exception $e) {
             $this->isError = true;
@@ -88,7 +81,6 @@ class SetupCluster extends Component
         $data = [];
         
         foreach ($students as $student) {
-            // Menggunakan nilai_sikap_numerik untuk mengkonversi huruf ke angka
             $data[] = [
                 'id' => $student->id,
                 'features' => [
@@ -118,34 +110,26 @@ class SetupCluster extends Component
      */
     private function kMeans($data, $k, $maxIterations, $centroidType = 'mean')
     {
-        // Inisialisasi centroid berdasarkan tipe
         $centroids = $this->initializeCentroids($data, $k, $centroidType);
         
-        // Inisialisasi cluster assignment
         $clusters = array_fill(0, $k, []);
         $previousClusters = null;
         $iterations = 0;
         $converged = false;
         
-        // Untuk menyimpan history iterasi
         $iterationHistory = [];
         
-        // Iterasi sampai konvergen atau mencapai maksimum iterasi
         while (!$converged && $iterations < $maxIterations) {
-            // Reset cluster
             $clusters = array_fill(0, $k, []);
             
-            // Untuk menyimpan matriks jarak dan penugasan cluster
             $distanceMatrix = [];
             $clusterAssignments = [];
             
-            // Assign setiap data ke cluster terdekat
             foreach ($data as $index => $item) {
                 $minDistance = PHP_FLOAT_MAX;
                 $clusterIndex = 0;
                 $distances = [];
                 
-                // Cari cluster dengan jarak terdekat
                 for ($i = 0; $i < $k; $i++) {
                     $distance = $this->euclideanDistance($item['features'], $centroids[$i]);
                     $distances[$i] = $distance;
@@ -155,10 +139,8 @@ class SetupCluster extends Component
                     }
                 }
                 
-                // Assign data ke cluster
                 $clusters[$clusterIndex][] = $item;
                 
-                // Simpan informasi jarak dan penugasan cluster
                 $distanceMatrix[$item['id']] = [
                     'name' => $item['name'],
                     'distances' => $distances
@@ -166,12 +148,10 @@ class SetupCluster extends Component
                 $clusterAssignments[$item['id']] = $clusterIndex + 1;
             }
             
-            // Cek konvergensi - jika cluster assignment tidak berubah
             if ($previousClusters !== null && $this->clustersEqual($clusters, $previousClusters)) {
                 $converged = true;
             }
             
-            // Update centroid berdasarkan rata-rata cluster
             for ($i = 0; $i < $k; $i++) {
                 if (!empty($clusters[$i])) {
                     $newCentroid = $this->calculateCentroid($clusters[$i]);
@@ -179,7 +159,6 @@ class SetupCluster extends Component
                 }
             }
             
-            // Simpan snapshot iterasi saat ini
             $sseIter = $this->calculateSSE($clusters, $centroids);
             $iterationHistory[] = [
                 'iteration' => $iterations + 1,
@@ -194,7 +173,6 @@ class SetupCluster extends Component
             $iterations++;
         }
         
-        // Hitung Sum of Squared Errors (SSE)
         $sse = $this->calculateSSE($clusters, $centroids);
         
         return [
@@ -207,9 +185,7 @@ class SetupCluster extends Component
         ];
     }
     
-    /**
-     * Inisialisasi centroid awal berdasarkan tipe
-     */
+    
     private function initializeCentroids($data, $k, $type)
     {
         $featureCount = count($data[0]['features']);
@@ -217,7 +193,6 @@ class SetupCluster extends Component
         
         switch ($type) {
             case 'random':
-                // Pilih K data secara acak sebagai centroid awal
                 $indices = array_rand($data, $k);
                 if (!is_array($indices)) {
                     $indices = [$indices];
@@ -229,12 +204,10 @@ class SetupCluster extends Component
                 break;
                 
             case 'first':
-                // Pilih K data pertama sebagai centroid awal
                 for ($i = 0; $i < $k; $i++) {
                     if (isset($data[$i])) {
                         $centroids[] = $data[$i]['features'];
                     } else {
-                        // Jika data kurang dari K, gunakan data terakhir
                         $centroids[] = $data[count($data) - 1]['features'];
                     }
                 }
@@ -242,27 +215,22 @@ class SetupCluster extends Component
                 
             case 'mean':
             default:
-                // Hitung rata-rata keseluruhan data
                 $allFeatures = array_column($data, 'features');
                 $means = array_fill(0, $featureCount, 0);
                 
-                // Hitung total untuk setiap fitur
                 foreach ($allFeatures as $features) {
                     for ($i = 0; $i < $featureCount; $i++) {
                         $means[$i] += $features[$i];
                     }
                 }
                 
-                // Hitung rata-rata
                 for ($i = 0; $i < $featureCount; $i++) {
                     $means[$i] /= count($data);
                 }
                 
-                // Buat variasi centroid sekitar rata-rata dengan random offset
                 for ($i = 0; $i < $k; $i++) {
                     $centroid = [];
                     for ($j = 0; $j < $featureCount; $j++) {
-                        // Tambahkan offset acak ±20% dari rata-rata
                         $offset = $means[$j] * (mt_rand(-20, 20) / 100);
                         $centroid[$j] = $means[$j] + $offset;
                     }
@@ -274,9 +242,7 @@ class SetupCluster extends Component
         return $centroids;
     }
     
-    /**
-     * Hitung jarak Euclidean antara dua titik
-     */
+ 
     private function euclideanDistance($a, $b)
     {
         $sum = 0;
@@ -286,9 +252,7 @@ class SetupCluster extends Component
         return sqrt($sum);
     }
     
-    /**
-     * Cek apakah dua cluster assignment sama
-     */
+   
     private function clustersEqual($a, $b)
     {
         if (count($a) !== count($b)) {
@@ -314,9 +278,7 @@ class SetupCluster extends Component
         return true;
     }
     
-    /**
-     * Hitung centroid baru berdasarkan rata-rata cluster
-     */
+    
     private function calculateCentroid($cluster)
     {
         if (empty($cluster)) {
@@ -339,9 +301,7 @@ class SetupCluster extends Component
         return $centroid;
     }
     
-    /**
-     * Hitung Sum of Squared Errors (SSE)
-     */
+    
     private function calculateSSE($clusters, $centroids)
     {
         $sse = 0;
