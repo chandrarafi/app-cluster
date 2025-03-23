@@ -92,11 +92,23 @@ class StudentDataset extends Component
 
     public function downloadTemplate()
     {
-        // Cek apakah pustaka PhpSpreadsheet tersedia
-        if (class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
-            return $this->downloadExcelTemplate();
+        $templatePath = public_path('templates/dataset_template.xlsx');
+        
+        if (file_exists($templatePath)) {
+            return response()->download($templatePath, 'template-siswa.xlsx', [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
         } else {
-            return $this->downloadCSVTemplate();
+            // Fallback ke cara lama jika file tidak ditemukan
+            // Cek apakah pustaka PhpSpreadsheet tersedia
+            if (class_exists('\\PhpOffice\\PhpSpreadsheet\\Spreadsheet')) {
+                return $this->downloadExcelTemplate();
+            } else {
+                return $this->downloadCSVTemplate();
+            }
         }
     }
     
@@ -456,7 +468,7 @@ class StudentDataset extends Component
             $headers = array_shift($rows);
             
             // Verifikasi header
-            $expectedHeaders = ['nama', 'kelas', 'uts', 'uas', 'penilaian_sikap', 'pramuka', 'pmr', 'kehadiran'];
+            $expectedHeaders = ['nama', 'kelas', 'uts', 'uas', 'penilaian_sikap', 'pramuka', 'pmr', 'kehadiran(%)'];
             $headerCount = count(array_intersect($headers, $expectedHeaders));
             
             if ($headerCount < count($expectedHeaders)) {
@@ -534,6 +546,32 @@ class StudentDataset extends Component
         if ($numericValue >= 75) return 'B';
         if ($numericValue >= 65) return 'C';
         return 'D';
+    }
+
+    public function truncateStudents()
+    {
+        try {
+            // Hapus semua data siswa
+            Student::truncate();
+            
+            // Reset session clustering jika ada
+            if (session()->has('clustering_results')) {
+                session()->forget('clustering_results');
+            }
+            
+            if (session()->has('elbow_results')) {
+                session()->forget('elbow_results');
+            }
+            
+            // Tampilkan pesan sukses
+            session()->flash('message', 'Semua data siswa berhasil dihapus.');
+            
+            // Refresh halaman untuk menampilkan data kosong
+            $this->dispatch('refresh');
+        } catch (\Exception $e) {
+            // Tampilkan pesan error jika terjadi kesalahan
+            session()->flash('error', 'Terjadi kesalahan saat menghapus data: ' . $e->getMessage());
+        }
     }
 
     public function render()

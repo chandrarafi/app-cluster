@@ -30,6 +30,15 @@
 
             <flux:spacer />
 
+            <flux:navlist variant="outline" class="text-white">
+                <form method="POST" action="{{ route('logout') }}" class="w-full">
+                    @csrf
+                    <flux:navlist.item as="button" type="submit" icon="arrow-right-start-on-rectangle" class="text-white hover:bg-red-700 w-full flex items-center">
+                        {{ __('Keluar') }}
+                    </flux:navlist.item>
+                </form>
+            </flux:navlist>
+
             {{-- <flux:navlist variant="outline" class="text-white">
                 <flux:navlist.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank" class="text-white hover:bg-blue-700">
                 {{ __('Repository') }}
