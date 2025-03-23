@@ -53,8 +53,13 @@ jobs:
             **/.git*/**
             **/node_modules/**
             README.md
+            .env
             .env.example
             phpunit.xml
             package-lock.json
             tests/**
+            storage/framework/cache/**
+            storage/framework/sessions/**
+            storage/framework/views/**
+            storage/logs/**
           log-level: verbose
