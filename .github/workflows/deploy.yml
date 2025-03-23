@@ -15,7 +15,7 @@ jobs:
           php-version: '8.2'
           
       - name: Install Composer Dependencies
-        run: composer install --prefer-dist --no-dev --optimize-autoloader
+        run: composer update
         
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -27,12 +27,12 @@ jobs:
           npm install
           npm run build
 
-      - name: Create .env file
-        run: |
-          cp .env.example .env
-          php artisan key:generate --force
-          sed -i "s/APP_ENV=local/APP_ENV=production/" .env
-          sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
+      # - name: Create .env file
+      #   run: |
+      #     cp .env.example .env
+      #     php artisan key:generate --force
+      #     sed -i "s/APP_ENV=local/APP_ENV=production/" .env
+      #     sed -i "s/APP_DEBUG=true/APP_DEBUG=false/" .env
 
 
       - name: Cache Config
