@@ -7,6 +7,10 @@
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <script src="https://code.highcharts.com/modules/exporting.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Load Plotly.js untuk visualisasi 3D -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- Load Three.js untuk animasi 3D yang lebih baik -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <div class="py-6">
         <div class="container mx-auto">
@@ -138,6 +142,20 @@
                             <h4 class="text-lg font-medium text-gray-700 mb-3">{{ __('Visualisasi Cluster') }}</h4>
 
                             <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
+                                <!-- Visualisasi 3D Clustering -->
+                                <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+                                    <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                                        <h5 class="font-medium text-gray-700">{{ __('Visualisasi Hasil Clustering') }}
+                                        </h5>
+                                    </div>
+                                    <div class="p-4">
+                                        <div wire:ignore class="h-[700px]" id="clustering-3d-plot"></div>
+                                        <div class="mt-3 text-sm text-center text-gray-500">
+                                            Gunakan mouse untuk memperbesar, menggeser dan memutar visualisasi.
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Distribusi Cluster -->
                                 <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                                     <div class="px-4 py-3 bg-gray-50 border-b border-gray-200">
@@ -176,7 +194,8 @@
                                                     <div>
                                                         <p class="text-base font-medium text-gray-800">Nilai K Optimal:
                                                             <span class="text-blue-600 font-semibold">{{ $optimalK
-                                                                }}</span></p>
+                                                                }}</span>
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div id="elbowChart" class="h-64 w-full"></div>
@@ -418,17 +437,12 @@
         </div>
     </div>
 
-
-
-
-
-    <!-- Script untuk chart -->
     <script>
-        // Variabel global untuk menyimpan instance charts
-    window.clusterCharts = {
+        window.clusterCharts = {
         distribution: null,
         characteristics: null,
-        elbow: null
+        elbow: null,
+        plot3d: null
     };
     
     document.addEventListener('DOMContentLoaded', function() {
@@ -436,22 +450,18 @@
         setupChartRendering();
     });
     
-    // Setup rendering chart
     function setupChartRendering() {
-        // Cegah duplikasi setup
         if (window.chartsSetupDone) return;
         window.chartsSetupDone = true;
         
         console.log('Setting up chart rendering untuk hasil clustering');
         
-        // Render charts jika data tersedia
         if (document.getElementById('cluster-distribution-chart')) {
             setTimeout(() => {
                 renderAllCharts();
             }, 300);
         }
         
-        // Tambahkan listener untuk event Livewire
         Livewire.hook('message.processed', (message, component) => {
             if (component && component.fingerprint && component.fingerprint.name === 'clustering.clustering-result') {
                 console.log('Livewire component clustering-result diupdate');
@@ -461,7 +471,6 @@
             }
         });
         
-        // Tambahkan listener untuk navigasi
         document.addEventListener('livewire:navigated', function() {
             console.log('Livewire navigated event');
             setTimeout(() => {
@@ -472,13 +481,12 @@
         });
     }
     
-    // Render semua chart yang diperlukan
     function renderAllCharts() {
         console.log('Rendering semua chart hasil clustering');
+        render3DClusteringPlot();
         renderDistributionChart();
         renderCharacteristicsChart();
         
-        // Memanggil renderElbowChart hanya jika ada data elbow
         var elbowChartContainer = document.getElementById('elbowChart');
         if (elbowChartContainer) {
             renderElbowChart();
@@ -487,10 +495,284 @@
         }
     }
     
-    // Fungsi untuk membuat chart distribusi
+    function render3DClusteringPlot() {
+        try {
+            const plotContainer = document.getElementById('clustering-3d-plot');
+            if (!plotContainer) {
+                console.log('Container plot 3D tidak ditemukan');
+                return;
+            }
+            
+            console.log('Rendering visualisasi 3D clustering');
+            
+            const clusters = @json($clusters ?? []);
+            
+            if (!clusters || clusters.length === 0) {
+                console.log('Tidak ada data clusters');
+                return;
+            }
+            
+            let plotData = [];
+            
+            const clusterColors = [
+                'rgba(102, 0, 102, 1)',      // Ungu tua (lebih terang)
+                'rgba(0, 102, 204, 1)',      // Biru (lebih terang)
+                'rgba(0, 153, 76, 1)',       // Hijau (lebih terang)
+                'rgba(255, 204, 0, 1)'       // Kuning (lebih terang)
+            ];
+            
+            const markerSize = 12;
+            
+            clusters.forEach((cluster, clusterIndex) => {
+                let x = [], y = [], z = [];
+                let text = [];
+                let labels = [];
+                
+                cluster.forEach((item, idx) => {
+                    x.push(item.features[0]); // UTS
+                    y.push(item.features[1]); // UAS
+                    z.push(item.features[2]); // Sikap
+                    
+                    text.push(`<b>${item.name}</b><br>` +
+                            `Kelas: <b>${item.kelas}</b><br>` +
+                            `UTS: <b>${item.features[0]}</b><br>` +
+                            `UAS: <b>${item.features[1]}</b><br>` +
+                            `Sikap: <b>${item.features[2]}</b><br>` +
+                            `Cluster: <b>${clusterIndex + 1}</b>`);
+                    
+                   
+                    if (idx % 5 === 0 || idx < 5) {
+                        labels.push(item.name.split(' ')[0]);
+                    } else {
+                        labels.push('');
+                    }
+                });
+                
+                plotData.push({
+                    type: 'scatter3d',
+                    mode: 'markers',
+                    x: x,
+                    y: y,
+                    z: z,
+                    text: text,
+                    hoverinfo: 'text',
+                    name: `Cluster ${clusterIndex + 1}`,
+                    marker: {
+                        color: clusterColors[clusterIndex % clusterColors.length],
+                        size: markerSize,
+                        symbol: 'circle',
+                        opacity: 0.9,
+                        line: {
+                            color: 'white',
+                            width: 1
+                        }
+                    }
+                });
+            });
+            
+            const layout = {
+                title: {
+                    text: 'Visualisasi 3D Clusters',
+                    font: {
+                        family: 'Arial, sans-serif',
+                        size: 20,
+                        color: '#333'
+                    }
+                },
+                scene: {
+                    xaxis: {
+                        title: {
+                            text: 'UTS',
+                            font: {
+                                family: 'Arial, sans-serif',
+                                size: 14,
+                                color: '#333'
+                            }
+                        },
+                        showbackground: true,
+                        backgroundcolor: 'rgba(240, 240, 240, 0.9)',
+                        gridcolor: 'rgb(180, 180, 180)',
+                        showgrid: true,
+                        zeroline: true,
+                        zerolinecolor: 'rgb(120, 120, 120)',
+                        zerolinewidth: 2,
+                        range: [-2.5, 2.5]
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'UAS',
+                            font: {
+                                family: 'Arial, sans-serif',
+                                size: 14,
+                                color: '#333'
+                            }
+                        },
+                        showbackground: true,
+                        backgroundcolor: 'rgba(240, 240, 240, 0.9)',
+                        gridcolor: 'rgb(180, 180, 180)',
+                        showgrid: true,
+                        zeroline: true,
+                        zerolinecolor: 'rgb(120, 120, 120)',
+                        zerolinewidth: 2,
+                        range: [-2.5, 2.5]
+                    },
+                    zaxis: {
+                        title: {
+                            text: 'Sikap',
+                            font: {
+                                family: 'Arial, sans-serif',
+                                size: 14,
+                                color: '#333'
+                            }
+                        },
+                        showbackground: true,
+                        backgroundcolor: 'rgba(240, 240, 240, 0.9)',
+                        gridcolor: 'rgb(180, 180, 180)',
+                        showgrid: true,
+                        zeroline: true,
+                        zerolinecolor: 'rgb(120, 120, 120)',
+                        zerolinewidth: 2,
+                        range: [-2.5, 2.5]
+                    },
+                    camera: {
+                        eye: {x: 1.8, y: 1.8, z: 1.5},
+                        up: {x: 0, y: 0, z: 1}
+                    },
+                    aspectmode: 'cube',
+                    dragmode: 'turntable'
+                },
+                margin: {
+                    l: 0,
+                    r: 0,
+                    b: 0,
+                    t: 50,
+                    pad: 0
+                },
+                showlegend: true,
+                legend: {
+                    title: {
+                        text: 'Clusters',
+                        font: {
+                            family: 'Arial, sans-serif',
+                            size: 14,
+                            color: '#333'
+                        }
+                    },
+                    x: 1,
+                    y: 1,
+                    bgcolor: 'rgba(255, 255, 255, 0.9)',
+                    bordercolor: 'rgba(0, 0, 0, 0.1)',
+                    borderwidth: 1,
+                    font: {
+                        family: 'Arial, sans-serif',
+                        size: 12,
+                        color: '#333'
+                    }
+                },
+                paper_bgcolor: 'rgba(255, 255, 255, 1)',
+                plot_bgcolor: 'rgba(255, 255, 255, 1)',
+                annotations: [{
+                    text: 'Posisi menunjukkan nilai UTS, UAS, dan Sikap yang dinormalisasi',
+                    showarrow: false,
+                    x: 0,
+                    y: 0,
+                    xref: 'paper',
+                    yref: 'paper',
+                    xanchor: 'left',
+                    yanchor: 'bottom',
+                    font: {
+                        family: 'Arial, sans-serif',
+                        size: 12,
+                        color: '#666'
+                    }
+                }]
+            };
+            
+            // Konfigurasi opsi
+            const config = {
+                responsive: true,
+                displayModeBar: true,
+                displaylogo: false,
+                modeBarButtonsToAdd: ['resetCameraDefault3d', 'hoverClosest3d'],
+                modeBarButtonsToRemove: ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d'],
+                toImageButtonOptions: {
+                    format: 'png',
+                    filename: 'cluster_visualisasi_3d',
+                    height: 900,
+                    width: 900,
+                    scale: 2
+                }
+            };
+            
+            function normalizeData(plotData) {
+                for (let i = 0; i < plotData.length; i++) {
+                    const trace = plotData[i];
+                    
+                    if (trace.mode.includes('markers')) {
+                        let allX = [], allY = [], allZ = [];
+                        for (let j = 0; j < plotData.length; j++) {
+                            if (plotData[j].mode.includes('markers')) {
+                                allX = allX.concat(plotData[j].x);
+                                allY = allY.concat(plotData[j].y);
+                                allZ = allZ.concat(plotData[j].z);
+                            }
+                        }
+                        
+                        const meanX = allX.reduce((a, b) => a + b, 0) / allX.length;
+                        const meanY = allY.reduce((a, b) => a + b, 0) / allY.length;
+                        const meanZ = allZ.reduce((a, b) => a + b, 0) / allZ.length;
+                        
+                        const stdX = Math.sqrt(allX.map(x => Math.pow(x - meanX, 2)).reduce((a, b) => a + b, 0) / allX.length) || 1;
+                        const stdY = Math.sqrt(allY.map(y => Math.pow(y - meanY, 2)).reduce((a, b) => a + b, 0) / allY.length) || 1;
+                        const stdZ = Math.sqrt(allZ.map(z => Math.pow(z - meanZ, 2)).reduce((a, b) => a + b, 0) / allZ.length) || 1;
+                        
+                        trace.x = trace.x.map(val => (val - meanX) / stdX);
+                        trace.y = trace.y.map(val => (val - meanY) / stdY);
+                        trace.z = trace.z.map(val => (val - meanZ) / stdZ);
+                    }
+                }
+                
+                return plotData;
+            }
+            
+            plotData = normalizeData(plotData);
+            
+            Plotly.newPlot('clustering-3d-plot', plotData, layout, config);
+            
+            let cameraAngle = 0;
+            let isRotating = false;
+            
+            function rotateCamera() {
+                if (!isRotating) return;
+                
+                cameraAngle = (cameraAngle + 0.003) % (2 * Math.PI);
+                
+                const layout_update = {
+                    'scene.camera.eye.x': 1.8 * Math.cos(cameraAngle),
+                    'scene.camera.eye.y': 1.8 * Math.sin(cameraAngle),
+                    'scene.camera.eye.z': 1.5
+                };
+                
+                Plotly.relayout('clustering-3d-plot', layout_update);
+                requestAnimationFrame(rotateCamera);
+            }
+            
+            
+            plotContainer.on('dblclick', function() {
+                isRotating = !isRotating;
+                if (isRotating) {
+                    rotateCamera();
+                }
+            });
+            
+            console.log('Visualisasi 3D clustering dengan bentuk bulat yang jelas berhasil dibuat');
+        } catch (error) {
+            console.error('Error rendering 3D clustering plot:', error);
+        }
+    }
+    
     function renderDistributionChart() {
         try {
-            // Pastikan element ada di DOM
             const chartContainer = document.getElementById('cluster-distribution-chart');
             if (!chartContainer) {
                 console.log('Container chart distribusi tidak ditemukan');
@@ -499,7 +781,6 @@
             
             console.log('Rendering chart distribusi cluster');
             
-            // Hapus chart sebelumnya jika ada
             if (window.clusterCharts.distribution) {
                 try {
                     window.clusterCharts.distribution.destroy();
@@ -508,7 +789,6 @@
                 }
             }
             
-            // Dapatkan data
             const clusterCounts = @json($this->getClusterCounts());
             const clusterColors = @json($this->getClusterPieColors());
             
@@ -517,7 +797,6 @@
                 return;
             }
             
-            // Buat chart baru
             window.clusterCharts.distribution = Highcharts.chart('cluster-distribution-chart', {
                 chart: {
                     type: 'pie',
@@ -569,7 +848,6 @@
     // Fungsi untuk membuat chart karakteristik
     function renderCharacteristicsChart() {
         try {
-            // Pastikan element ada di DOM
             const chartContainer = document.getElementById('cluster-characteristics-chart');
             if (!chartContainer) {
                 console.log('Container chart karakteristik tidak ditemukan');
@@ -578,7 +856,6 @@
             
             console.log('Rendering chart karakteristik cluster');
             
-            // Hapus chart sebelumnya jika ada
             if (window.clusterCharts.characteristics) {
                 try {
                     window.clusterCharts.characteristics.destroy();
@@ -587,7 +864,6 @@
                 }
             }
             
-            // Dapatkan data
             const clusterNames = [];
             const dataPoints = @json($this->getClusterDataForRadarChart());
             
@@ -667,7 +943,6 @@
     // Fungsi untuk membuat chart elbow
     function renderElbowChart() {
         try {
-            // Pastikan element ada di DOM dan data tersedia
             const chartContainer = document.getElementById('elbowChart');
             if (!chartContainer) {
                 console.log('Container chart elbow tidak ditemukan');
@@ -676,16 +951,13 @@
             
             console.log('Rendering chart elbow pada halaman hasil');
             
-            // Dapatkan data elbow results dari server
             const elbowResults = @json($elbowResults ?? []);
             
-            // Periksa apakah data tersedia
             if (!elbowResults || elbowResults.length === 0) {
                 console.log('Tidak ada data elbow results');
                 return;
             }
             
-            // Hapus chart sebelumnya jika ada
             if (window.clusterCharts.elbow) {
                 try {
                     window.clusterCharts.elbow.destroy();
@@ -694,7 +966,6 @@
                 }
             }
             
-            // Persiapkan data untuk chart elbow
             const chartData = [];
             for (const result of elbowResults) {
                 if (result && result.k !== undefined && result.sse !== undefined) {
