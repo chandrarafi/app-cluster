@@ -232,14 +232,29 @@ function renderChart(results) {
     
     console.log('Data chart siap:', chartData);
     
+    // Identifikasi K optimal (elbow point) berdasarkan penurunan SSE
+    let optimalK = @this.optimalK || null;
+    console.log('Nilai K optimal:', optimalK);
+    
     setTimeout(() => {
         try {
+            // Persiapkan garis vertikal untuk titik elbow (K optimal)
+            const optimalKLine = optimalK ? {
+                type: 'line',
+                dashStyle: 'dash',
+                color: '#FF0000',
+                width: 2,
+                value: optimalK,
+                zIndex: 5
+            } : null;
+            
             window.elbowChart = Highcharts.chart('elbow-chart-container', {
                 chart: { type: 'line' },
                 title: { text: 'Metode Elbow - SSE vs Jumlah Cluster' },
                 xAxis: {
                     title: { text: 'Jumlah Cluster (K)' },
-                    allowDecimals: false
+                    allowDecimals: false,
+                    plotLines: optimalK ? [optimalKLine] : []
                 },
                 yAxis: {
                     title: { text: 'Sum of Squared Errors (SSE)' }
@@ -265,7 +280,31 @@ function renderChart(results) {
                         return '<b>K = ' + this.x + '</b><br>SSE: ' + Highcharts.numberFormat(this.y, 2);
                     }
                 },
-                credits: { enabled: false }
+                credits: { enabled: false },
+                annotations: optimalK ? [{
+                    labels: [{
+                        point: {
+                            x: optimalK,
+                            y: chartData.find(point => point[0] === optimalK)?.[1] || 0,
+                            xAxis: 0,
+                            yAxis: 0
+                        },
+                        text: 'Titik Elbow',
+                        style: {
+                            fontSize: '12px',
+                            color: '#FF0000',
+                            fontWeight: 'bold'
+                        },
+                        backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                        borderColor: '#FF0000',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                        padding: 5,
+                        shape: 'callout',
+                        align: 'right',
+                        y: -40
+                    }]
+                }] : []
             });
             console.log('Chart berhasil dibuat');
         } catch (error) {
