@@ -41,18 +41,26 @@ jobs:
           php artisan route:cache
           php artisan view:cache
 
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy ke cPanel via SSH
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          key_path: ~/.ssh/deploy_key
           port: ${{ secrets.SSH_PORT }}
           source: "."
           target: ${{ secrets.SSH_TARGET_DIR }}
           rm: false
           strip_components: 0
           overwrite: true
+          debug: true
           exclude: |
             .git*
             node_modules
