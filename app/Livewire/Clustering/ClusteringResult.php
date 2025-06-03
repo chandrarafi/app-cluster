@@ -18,18 +18,18 @@ class ClusteringResult extends Component
     public $elbowResults = null;
     public $optimalK = null;
     public $featureLabels = [
-        'UTS', 
-        'UAS', 
-        'Sikap', 
-        'Pramuka', 
-        'PMR', 
+        'UTS',
+        'UAS',
+        'Sikap',
+        'Pramuka',
+        'PMR',
         'Kehadiran'
     ];
-    
+
     public function mount()
     {
         $result = Session::get('kmeans_result');
-        
+
         if ($result) {
             $this->isDataAvailable = true;
             $this->clusters = $result['clusters'];
@@ -38,11 +38,11 @@ class ClusteringResult extends Component
             $this->sse = $result['sse'];
             $this->converged = $result['converged'];
         }
-        
+
         if (Session::has('optimalK')) {
             $this->optimalK = Session::get('optimalK');
         }
-        
+
         if (Session::has('elbow_results')) {
             $elbowData = Session::get('elbow_results');
             if (isset($elbowData['results'])) {
@@ -50,14 +50,14 @@ class ClusteringResult extends Component
             }
         }
     }
-    
-    
+
+
     public function formatNumber($number, $precision = 2)
     {
         return number_format($number, $precision, '.', ',');
     }
-    
-  
+
+
     public function getClusterColor($index)
     {
         $colors = [
@@ -72,11 +72,11 @@ class ClusteringResult extends Component
             'bg-teal-100 text-teal-800',
             'bg-orange-100 text-orange-800'
         ];
-        
+
         return $colors[$index % count($colors)];
     }
-    
-   
+
+
     public function getNilaiSikapHuruf($nilai)
     {
         if ($nilai >= 85) {
@@ -89,13 +89,13 @@ class ClusteringResult extends Component
             return 'K';
         }
     }
-    
-   
+
+
     public function getClusterStats($clusterIndex)
     {
         $cluster = $this->clusters[$clusterIndex];
         $count = count($cluster);
-        
+
         if ($count === 0) {
             return [
                 'count' => 0,
@@ -110,14 +110,14 @@ class ClusteringResult extends Component
                 'avg_kehadiran' => 0,
             ];
         }
-        
+
         $totalUts = 0;
         $totalUas = 0;
         $totalSikap = 0;
         $totalPramuka = 0;
         $totalPmr = 0;
         $totalKehadiran = 0;
-        
+
         foreach ($cluster as $item) {
             $totalUts += $item['features'][0];
             $totalUas += $item['features'][1];
@@ -126,11 +126,11 @@ class ClusteringResult extends Component
             $totalPmr += $item['features'][4];
             $totalKehadiran += $item['features'][5];
         }
-        
+
         $avgSikap = $totalSikap / $count;
         $avgPramuka = $totalPramuka / $count;
         $avgPmr = $totalPmr / $count;
-        
+
         return [
             'count' => $count,
             'avg_uts' => $totalUts / $count,
@@ -144,58 +144,70 @@ class ClusteringResult extends Component
             'avg_kehadiran' => $totalKehadiran / $count,
         ];
     }
-    
-    
+
+
     public function resetClustering()
     {
         Session::forget('kmeans_result');
         return redirect()->route('clustering.setup');
     }
-    
+
     public function getClusterCounts()
     {
         if (!$this->isDataAvailable) {
             return [];
         }
-        
+
         $counts = [];
         foreach ($this->clusters as $cluster) {
             $counts[] = count($cluster);
         }
-        
+
         return $counts;
     }
-    
+
     public function getTotalStudents()
     {
         if (!$this->isDataAvailable) {
             return 0;
         }
-        
+
         $total = 0;
         foreach ($this->clusters as $cluster) {
             $total += count($cluster);
         }
-        
+
         return $total;
     }
-    
+
     public function getClusterPieColors()
     {
         return [
-            '#4285F4', '#EA4335', '#FBBC05', '#34A853', 
-            '#FF6D01', '#46BDC6', '#9C27B0', '#795548'
+            '#4285F4',
+            '#EA4335',
+            '#FBBC05',
+            '#34A853',
+            '#FF6D01',
+            '#46BDC6',
+            '#9C27B0',
+            '#795548'
         ];
     }
-    
+
     public function getClusterHighchartsColors()
     {
         return [
-            '#4285F4', '#EA4335', '#FBBC05', '#34A853', 
-            '#FF6D01', '#46BDC6', '#9C27B0', '#795548'
+            '#4285F4',
+            '#EA4335',
+            '#FBBC05',
+            '#34A853',
+            '#FF6D01',
+            '#46BDC6',
+            '#9C27B0',
+            '#795548'
         ];
     }
-    
+
     public function getValueLabel($value, $threshold)
     {
         if ($value >= $threshold) {
@@ -206,7 +218,7 @@ class ClusteringResult extends Component
             return __('Kurang');
         }
     }
-    
+
     public function getValueColor($value, $threshold)
     {
         if ($value >= $threshold) {
@@ -217,7 +229,7 @@ class ClusteringResult extends Component
             return 'text-red-600';
         }
     }
-    
+
     public function getSikapColor($grade)
     {
         switch ($grade) {
@@ -237,20 +249,20 @@ class ClusteringResult extends Component
                 return 'text-gray-600';
         }
     }
-    
+
     public function getClusterDataForRadarChart()
     {
         if (!$this->isDataAvailable) {
             return [];
         }
-        
+
         $result = [];
-        
+
         foreach ($this->clusters as $index => $cluster) {
             $stats = $this->getClusterStats($index);
-            
+
             $sikapNormalized = ($stats['avg_sikap'] / 4) * 100;
-            
+
             $result[] = [
                 $stats['avg_uts'],             // UTS
                 $stats['avg_uas'],             // UAS
@@ -260,20 +272,20 @@ class ClusteringResult extends Component
                 $stats['avg_kehadiran']        // Kehadiran
             ];
         }
-        
+
         return $result;
     }
-    
+
     public function getClusterCharacteristics($clusterIndex)
     {
         if (!$this->isDataAvailable) {
             return '';
         }
-        
+
         $stats = $this->getClusterStats($clusterIndex);
-        
+
         $characteristics = [];
-        
+
         $akademikRata = ($stats['avg_uts'] + $stats['avg_uas']) / 2;
         if ($akademikRata >= 80) {
             $characteristics[] = __('Akademik Tinggi');
@@ -282,7 +294,7 @@ class ClusteringResult extends Component
         } else {
             $characteristics[] = __('Akademik Rendah');
         }
-        
+
         if ($stats['avg_sikap'] >= 3.1) {
             $characteristics[] = __('Sikap Sangat Baik');
         } else if ($stats['avg_sikap'] >= 2.1) {
@@ -290,7 +302,7 @@ class ClusteringResult extends Component
         } else {
             $characteristics[] = __('Sikap Perlu Perhatian');
         }
-        
+
         $ekstraRata = ($stats['avg_pramuka'] + $stats['avg_pmr']) / 2;
         if ($ekstraRata >= 80) {
             $characteristics[] = __('Ekstrakurikuler Aktif');
@@ -299,7 +311,7 @@ class ClusteringResult extends Component
         } else {
             $characteristics[] = __('Ekstrakurikuler Pasif');
         }
-        
+
         if ($stats['avg_kehadiran'] >= 90) {
             $characteristics[] = __('Kehadiran Tinggi');
         } else if ($stats['avg_kehadiran'] >= 80) {
@@ -307,11 +319,11 @@ class ClusteringResult extends Component
         } else {
             $characteristics[] = __('Kehadiran Rendah');
         }
-        
+
         return implode(', ', $characteristics);
     }
-    
-   
+
+
     public function getNilaiHuruf($nilai, $tipe)
     {
         if ($tipe == 'sikap') {
@@ -327,7 +339,112 @@ class ClusteringResult extends Component
             return 'D';
         }
     }
-    
+
+    public function exportToExcel()
+    {
+        if (!$this->isDataAvailable) {
+            session()->flash('error', 'Tidak ada data clustering untuk diekspor.');
+            return;
+        }
+
+        $clusteringData = [];
+        $clusterStats = [];
+
+        // Siapkan statistik cluster
+        foreach ($this->clusters as $index => $cluster) {
+            $stats = $this->getClusterStats($index);
+            $stats['karakteristik'] = $this->getClusterCharacteristics($index);
+            $clusterStats[$index] = $stats;
+
+            foreach ($cluster as $student) {
+                $clusteringData[] = [
+                    'nama' => $student['name'],
+                    'kelas' => $student['kelas'],
+                    'uts' => $student['features'][0],
+                    'uas' => $student['features'][1],
+                    'sikap' => $student['features'][2],
+                    'pramuka' => $student['features'][3],
+                    'pmr' => $student['features'][4],
+                    'kehadiran' => $student['features'][5],
+                    'cluster' => 'Cluster ' . ($index + 1),
+                    'karakteristik' => $this->getClusterCharacteristics($index)
+                ];
+            }
+        }
+
+        // Metadata untuk export
+        $metadata = [
+            'totalStudents' => $this->getTotalStudents(),
+            'sse' => $this->sse,
+            'iterations' => $this->iterations
+        ];
+
+        $filename = 'hasil-clustering-' . date('Y-m-d') . '.xlsx';
+        $exporter = new \App\Exports\ClusteringExport($clusteringData, $this->centroids, $clusterStats, $metadata);
+
+        return $exporter->download($filename);
+    }
+
+    public function exportToPDF()
+    {
+        if (!$this->isDataAvailable) {
+            session()->flash('error', 'Tidak ada data clustering untuk diekspor.');
+            return;
+        }
+
+        try {
+            $clusteringData = [];
+            $clusterStats = [];
+
+            // Siapkan statistik cluster - hanya perlu numerik dan ASCII
+            foreach ($this->clusters as $index => $cluster) {
+                $stats = $this->getClusterStats($index);
+                // Pastikan teks karakteristik hanya ASCII
+                $karakteristik = $this->getClusterCharacteristics($index);
+                $karakteristik = preg_replace('/[^\x20-\x7E]/', '', $karakteristik); // ASCII printable only
+                $stats['karakteristik'] = $karakteristik;
+                $clusterStats[$index] = $stats;
+
+                foreach ($cluster as $student) {
+                    // Hapus semua karakter non-ASCII dari nama dan kelas
+                    $nama = preg_replace('/[^\x20-\x7E]/', '', $student['name']);
+                    $kelas = preg_replace('/[^\x20-\x7E]/', '', $student['kelas']);
+
+                    $clusteringData[] = [
+                        'nama' => $nama,
+                        'kelas' => $kelas,
+                        'uts' => (float)$student['features'][0],
+                        'uas' => (float)$student['features'][1],
+                        'sikap' => (float)$student['features'][2],
+                        'pramuka' => (float)$student['features'][3],
+                        'pmr' => (float)$student['features'][4],
+                        'kehadiran' => (float)$student['features'][5],
+                        'cluster' => 'Cluster ' . ($index + 1),
+                        'karakteristik' => $karakteristik
+                    ];
+                }
+            }
+
+            // Metadata untuk export - hanya numerik dan ASCII
+            $metadata = [
+                'totalStudents' => $this->getTotalStudents(),
+                'sse' => $this->sse,
+                'iterations' => $this->iterations
+            ];
+
+            $filename = 'hasil-clustering-' . date('Y-m-d') . '.pdf';
+            $exporter = new \App\Exports\ClusteringExport($clusteringData, $this->centroids, $clusterStats, $metadata);
+
+            // Reset error handlers untuk menangkap error yang mungkin muncul
+            return $exporter->downloadPDF($filename);
+        } catch (\Exception $e) {
+            // Log error dan tampilkan pesan kepada user
+            report($e); // Log ke laravel.log
+            session()->flash('error', 'Terjadi kesalahan saat ekspor PDF: ' . $e->getMessage());
+            return back();
+        }
+    }
+
     public function render()
     {
         return view('livewire.clustering.clustering-result');
